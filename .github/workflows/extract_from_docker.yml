@@ -1,0 +1,132 @@
+name: Extract from Docker
+
+on:
+  push:
+    branches:
+      - "!*"
+    tags:
+      - "*"
+
+jobs:
+  web-vault:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release zip
+
+      - name: Install Docker
+        run: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+      - name: Get Tag name
+        id: tag-name
+        uses: battila7/get-version-action@v2
+
+      - name: Extract web-vault
+        run: |
+          docker pull vaultwarden/server:${{ steps.tag-name.outputs.version }}
+          docker create --name vw vaultwarden/server:${{ steps.tag-name.outputs.version }}
+          docker cp vw:/web-vault ./
+          docker rm vw
+          zip web-vault web-vault/*
+
+      - name: Upload web-vault
+        uses: actions/upload-artifact@v1
+        with:
+          path: web-vault.zip
+          name: web-vault.zip
+
+  vaultwarden-armv7:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Get Tag name
+        id: tag-name
+        uses: battila7/get-version-action@v2
+
+      - name: Fetch code
+        uses: actions/checkout@master
+        with:
+          repository: dani-garcia/vaultwarden
+          ref: refs/tags/${{ steps.tag-name.outputs.version }}
+          path: vaultwarden
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install apt-transport-https ca-certificates curl gnupg lsb-release zip
+
+      - name: Install Docker
+        run: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+      - name: Build and extract vaultwarden
+        run: |
+          cd vaultwarden
+          docker build --build-arg DB=postgresql -t vaultwarden-build -f docker/armv7/Dockerfile .
+          docker create --name vw vaultwarden-build
+          docker cp vw:/vaultwarden ./
+          docker rm vw
+
+      - name: Upload vaultwarden
+        uses: actions/upload-artifact@v1
+        with:
+          path: vaultwarden
+          name: vaultwarden_armv7
+
+  release:
+    runs-on: ubuntu-20.04
+
+    if: ${{ startsWith(github.ref, 'refs/tags') }}
+
+    needs: [web-vault, vaultwarden-armv7]
+
+    steps:
+    - name: Download vaultwarden_armv7 binary
+      uses: actions/download-artifact@v1
+      with:
+        name: vaultwarden_armv7
+
+    - name: Download web-vault
+      uses: actions/download-artifact@v1
+      with:
+        name: web-vault.zip
+        path: ./
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1.0.0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Attach armv7 binary to release
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: vaultwarden_armv7/vaultwarden
+        asset_name: vaultwarden_armhf
+        asset_content_type: application/octet-stream
+
+    - name: Attach web-vault.zip to release
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: web-vault.zip
+        asset_name: web-vault.zip
+        asset_content_type: application/zip
