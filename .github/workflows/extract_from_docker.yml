@@ -33,7 +33,7 @@ jobs:
           docker create --name vw vaultwarden/server:${{ steps.tag-name.outputs.version }}
           docker cp vw:/web-vault ./
           docker rm vw
-          zip web-vault web-vault/*
+          zip -r web-vault web-vault
 
       - name: Upload web-vault
         uses: actions/upload-artifact@v1
