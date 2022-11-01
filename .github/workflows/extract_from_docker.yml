@@ -75,6 +75,30 @@ jobs:
           path: vaultwarden
           name: vaultwarden_armv7
 
+  libssl1_1-armv7:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Install Docker
+        run: |
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install docker-ce docker-ce-cli containerd.io
+
+      - name: Fetch image and extract libraries
+        run: |
+          docker create --name vw --platform=linux/arm/v7 vaultwarden/server:1.26.0
+          docker cp vw:/usr/lib/arm-linux-gnueabihf/libssl.so.1.1 .
+          docker cp vw:/usr/lib/arm-linux-gnueabihf/libcrypto.so.1.1 .
+          docker rm vw
+
+      - name: Upload libssl
+        uses: actions/upload-artifact@v3
+        with:
+          path: ./*.so.1.1
+          name: libssl1.1
+
   release:
     runs-on: ubuntu-22.04
     needs: [web-vault, vaultwarden-armv7]
@@ -90,10 +114,16 @@ jobs:
       with:
         name: web-vault.zip
 
+    - name: Download libssl
+      uses: actions/download-artifact@v1
+      with:
+        name: libssl1.1
+
     - name: List files
       run:
         ls -la vaultwarden_armv7/vaultwarden
         ls -la web-vault.zip
+        ls -la libssl1.1
 
     - name: Create Release
       uses: softprops/action-gh-release@v1
@@ -102,3 +132,5 @@ jobs:
         files: |
           vaultwarden_armv7/vaultwarden
           web-vault.zip
+          libssl1.1/libcrypto.so.1.1
+          libssl1.1/libssl.so.1.1
