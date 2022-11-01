@@ -120,7 +120,7 @@ jobs:
         name: libssl1.1
 
     - name: List files
-      run:
+      run: |
         ls -la vaultwarden_armv7/vaultwarden
         ls -la web-vault.zip
         ls -la libssl1.1
