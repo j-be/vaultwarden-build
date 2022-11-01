@@ -101,7 +101,7 @@ jobs:
 
   release:
     runs-on: ubuntu-22.04
-    needs: [web-vault, vaultwarden-armv7]
+    needs: [web-vault, vaultwarden-armv7, libssl1_1-armv7]
 
     steps:
     - name: Download vaultwarden_armv7 binary
