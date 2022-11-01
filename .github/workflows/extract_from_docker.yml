@@ -9,7 +9,7 @@ on:
 
 jobs:
   web-vault:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Install dependencies
@@ -29,7 +29,6 @@ jobs:
 
       - name: Extract web-vault
         run: |
-          docker pull vaultwarden/server:${{ steps.tag-name.outputs.version }}
           docker create --name vw vaultwarden/server:${{ steps.tag-name.outputs.version }}
           docker cp vw:/web-vault ./
           docker rm vw
@@ -42,7 +41,7 @@ jobs:
           name: web-vault.zip
 
   vaultwarden-armv7:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Get Tag name
@@ -82,7 +81,7 @@ jobs:
           name: vaultwarden_armv7
 
   release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     if: ${{ startsWith(github.ref, 'refs/tags') }}
 
@@ -98,7 +97,6 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: web-vault.zip
-        path: ./
 
     - name: Create Release
       id: create_release
