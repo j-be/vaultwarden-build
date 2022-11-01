@@ -1,11 +1,6 @@
 name: Extract from Docker
 
-on:
-  push:
-    branches:
-      - "!*"
-    tags:
-      - "*"
+on: push
 
 jobs:
   web-vault:
@@ -82,9 +77,6 @@ jobs:
 
   release:
     runs-on: ubuntu-22.04
-
-    if: ${{ startsWith(github.ref, 'refs/tags') }}
-
     needs: [web-vault, vaultwarden-armv7]
 
     steps:
@@ -98,33 +90,15 @@ jobs:
       with:
         name: web-vault.zip
 
+    - name: List files
+      run:
+        ls -la vaultwarden_armv7/vaultwarden
+        ls -la web-vault.zip
+
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Attach armv7 binary to release
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: vaultwarden_armv7/vaultwarden
-        asset_name: vaultwarden_armhf
-        asset_content_type: application/octet-stream
-
-    - name: Attach web-vault.zip to release
-      uses: actions/upload-release-asset@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: web-vault.zip
-        asset_name: web-vault.zip
-        asset_content_type: application/zip
+        files: |
+          vaultwarden_armv7/vaultwarden
+          web-vault.zip
