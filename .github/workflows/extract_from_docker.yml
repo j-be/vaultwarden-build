@@ -24,7 +24,7 @@ jobs:
 
       - name: Extract web-vault
         run: |
-          docker create --name vw vaultwarden/server:${{ steps.tag-name.outputs.version }}
+          docker create --name vw vaultwarden/server:1.26.0
           docker cp vw:/web-vault ./
           docker rm vw
           zip -r web-vault web-vault
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@master
         with:
           repository: dani-garcia/vaultwarden
-          ref: refs/tags/${{ steps.tag-name.outputs.version }}
+          ref: refs/tags/1.26.0
           path: vaultwarden
 
       - name: Install dependencies
